@@ -1,36 +1,30 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>机翼升力 · 伯努利交互演示（AoA & Airspeed）</title>
+<title>机翼升力 · 伯努利交互演示（升级版）</title>
 <style>
-  :root{--bg:#0b1220;--panel:#131b2c;--ink:#e8eefc;--muted:#9fb2d9;--hi:#ff6d6d;--lo:#6dc8ff;--accent:#5aa9ff;}
+  :root{--bg:#0b1220;--panel:#131b2c;--ink:#e8eefc;--muted:#9fb2d9;}
   html,body{height:100%}
   body{margin:0;background:linear-gradient(180deg,#0b1220,#0f1730);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   .wrap{max-width:1080px;margin:0 auto;padding:16px}
   h1{font-size:22px;margin:6px 0 12px}
   .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start}
   .panel{background:var(--panel);border:1px solid #223;border-radius:14px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .row{display:grid;grid-template-columns:140px 1fr 82px;gap:10px;align-items:center;margin:8px 0}
+  .row{display:grid;grid-template-columns:160px 1fr 88px;gap:10px;align-items:center;margin:8px 0}
   label{color:#cfe0ff}
   input[type=range]{width:100%}
   svg{width:100%;height:auto;background:linear-gradient(180deg,#0f1a33,#081126);border-radius:12px;display:block}
-  .pill{display:inline-block;font-size:12px;color:#9fb2d9;margin-left:8px}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
-  .key{display:flex;gap:6px;align-items:center}
-  .box{width:12px;height:12px;border-radius:2px}
-  .eq{font-family:ui-monospace,Menlo,Consolas,monospace;color:#d7e4ff;background:#0e162a;border:1px solid #223;border-radius:8px;padding:6px 8px;display:inline-block;margin-top:8px}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;color:#d7e4ff}
   .status{font-weight:600;padding:4px 8px;border-radius:8px;background:#14243f;display:inline-block;margin-left:8px}
   .good{color:#8fff79}.bad{color:#ff958a}
-  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;color:#d7e4ff}
   @media (max-width: 980px){ .grid{grid-template-columns:1fr} h1{font-size:18px} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>机翼升力 · 伯努利交互演示<span class="pill">动压 q = ½ρV² · 升力 L = q·S·C<sub>L</sub></span></h1>
+  <h1>机翼升力 · 伯努利交互演示（升级版）</h1>
   <div class="grid">
     <div class="panel">
       <svg id="scene" viewBox="0 0 960 420" role="img" aria-label="Airfoil demo">
@@ -49,19 +43,15 @@
         <g id="foil" transform="translate(240,210)">
           <path id="foilPath" d="" fill="#0e1a2f" stroke="#29406f" stroke-width="2"></path>
           <path id="foilTint" d="" fill="url(#pGrad)" opacity="0.65" filter="url(#glow)"></path>
-          <g id="liftArrow" transform="translate(220,-10) rotate(-90)">
-            <line x1="0" y1="0" x2="0" y2="-80" stroke="#cfe0ff" stroke-width="4"/>
-            <polygon points="-8,0 8,0 0,12" fill="#cfe0ff"/>
+          <g id="liftArrow" transform="translate(220,-10)">
+            <line id="liftLine" x1="0" y1="0" x2="0" y2="-80" stroke="#cfe0ff" stroke-width="4"/>
+            <polygon id="liftHead" points="-8,0 8,0 0,12" fill="#cfe0ff"/>
           </g>
         </g>
-        <text id="labelHi" x="750" y="70" fill="#ffb3aa" class="mono">上表面：v↑, p↓</text>
-        <text id="labelLo" x="750" y="95" fill="#9fdcff" class="mono">下表面：v↓, p↑</text>
+        <text x="740" y="60" fill="#9fdcff" class="mono">上表面：v↑, p↓（冷色）</text>
+        <text x="740" y="82" fill="#ffb3aa" class="mono">下表面：v↓, p↑（暖色）</text>
       </svg>
-      <div class="legend">
-        <div class="key"><div class="box" style="background:#6dc8ff"></div><span>低压区（速度快）</span></div>
-        <div class="key"><div class="box" style="background:#ff6d6d"></div><span>高压区（速度慢）</span></div>
-      </div>
-      <div class="eq">基于薄翼理论近似：C<sub>L</sub> ≈ 2π·α（弧度），在 |α|≲12° 内适用<span id="status" class="status good">附着 Attached</span></div>
+      <div class="mono" id="statusBar" style="margin-top:6px"></div>
     </div>
     <div class="panel">
       <div class="row"><label>迎角 Angle of attack (°)</label><input type="range" id="aoa" min="-6" max="18" step="0.1" value="6"><output id="oaoa">6.0</output></div>
@@ -70,68 +60,50 @@
       <div class="row"><label>翼面积 S (m²)</label><input type="range" id="S" min="0.2" max="4" step="0.05" value="1.0"><output id="oS">1.00</output></div>
       <div class="row"><label>效率系数 η</label><input type="range" id="eta" min="0.5" max="1.0" step="0.01" value="0.88"><output id="oeta">0.88</output></div>
       <div class="mono" id="readout" style="margin-top:8px"></div>
-      <div class="mono" style="color:#9fb2d9;margin-top:6px">说明：此演示强调伯努利视角（速度场对应压强差）。真实机翼升力还涉及循环/粘性、边界层与失速等因素，此处用简化近似用于教学演示。</div>
+      <div class="mono" style="color:#9fb2d9;margin-top:6px">提示：现在速度/密度/面积不仅会改变 q 和 L，还会让升力箭头变长、机翼色带更“浓”。</div>
     </div>
   </div>
 </div>
 <script>
 const $ = (id)=>document.getElementById(id);
 const state = { aoa:6, V:50, rho:1.225, S:1.0, eta:0.88 };
-const foil = { chord: 360, thickness: 0.12 }; // simple symmetric airfoil
+const foil = { chord: 360, thickness: 0.12 };
 
 function airfoilPath(chord, t){
-  const n = 60;
-  const xs = [];
-  for(let i=0;i<=n;i++){
-    const beta = Math.PI*i/n;
-    xs.push( (1 - Math.cos(beta))*0.5*chord );
-  }
+  const n = 60, xs=[];
+  for(let i=0;i<=n;i++){ const beta=Math.PI*i/n; xs.push((1-Math.cos(beta))*0.5*chord); }
   const yt = (x)=>5*t*(0.2969*Math.sqrt(x/chord) - 0.1260*(x/chord) - 0.3516*(x/chord)**2 + 0.2843*(x/chord)**3 - 0.1015*(x/chord)**4);
   const up=[], lo=[];
-  for(const x of xs){
-    up.push([x, -yt(x)]);
-    lo.push([x,  yt(x)]);
-  }
-  const pts = up.concat(lo.reverse());
-  let d = `M ${pts[0][0]},${pts[0][1]}`;
-  for(let i=1;i<pts.length;i++) d += ` L ${pts[i][0]},${pts[i][1]}`;
-  d += " Z";
-  return d;
+  for(const x of xs){ up.push([x,-yt(x)]); lo.push([x,yt(x)]); }
+  const pts=up.concat(lo.reverse());
+  let d=`M ${pts[0][0]},${pts[0][1]}`; for(let i=1;i<pts.length;i++) d+=` L ${pts[i][0]},${pts[i][1]}`; d+=" Z"; return d;
 }
 
 function setFoilShape(){
-  const d = airfoilPath(foil.chord, foil.thickness);
+  const d=airfoilPath(foil.chord, foil.thickness);
   $("foilPath").setAttribute("d", d);
   $("foilTint").setAttribute("d", d);
-  const g = document.getElementById("foil");
-  g.setAttribute("transform", `translate(240,210) rotate(${state.aoa})`);
+  document.getElementById("foil").setAttribute("transform", `translate(240,210) rotate(${state.aoa})`);
 }
 
 function initParticles(){
-  const g = $("particles");
-  g.innerHTML = "";
-  const N = 80;
-  for(let i=0;i<N;i++){
-    const y = 50 + (i%20)*16;
-    const x = Math.random()*960;
-    const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    c.setAttribute("cx", x);
-    c.setAttribute("cy", y + (Math.random()*40-20));
-    c.setAttribute("r", 2);
-    c.setAttribute("fill", "#9fdcff");
-    c.style.opacity = 0.9;
-    g.appendChild(c);
+  const g = $("particles"); g.innerHTML="";
+  const rows = 8, cols = 40;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const y = 70 + r*28 + (Math.random()*6-3);
+      const x = Math.random()*960;
+      const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 2);
+      dot.setAttribute("fill", "#9fdcff"); g.appendChild(dot);
+    }
   }
 }
-
 function animateParticles(){
-  const g = $("particles");
-  const v = state.V/2;
+  const g=$("particles"); const v = state.V * 0.6;
   for(const c of g.children){
-    let x = parseFloat(c.getAttribute("cx"));
-    x += v*0.016;
-    if(x>980) x = -10;
-    c.setAttribute("cx", x);
+    let x = parseFloat(c.getAttribute("cx")); x += v*0.016;
+    if(x>980) x=-10; c.setAttribute("cx", x);
   }
   requestAnimationFrame(animateParticles);
 }
@@ -139,48 +111,41 @@ function animateParticles(){
 function compute(){
   const alpha = state.aoa*Math.PI/180;
   let CL = 2*Math.PI*alpha*state.eta;
-  CL = Math.max(-1.2, Math.min(1.5, CL));
+  CL = Math.max(-1.2, Math.min(1.6, CL));
   const q = 0.5*state.rho*state.V*state.V;
-  const L = q*state.S*CL;
+  const L = q * state.S * CL;
   const stalled = Math.abs(state.aoa) > 14;
   return {alpha, CL, q, L, stalled};
 }
 
-function tintPressure(CL){
+function scaleVisuals(CL, q, L){
+  const L0 = 0.5*1.225*50*50 * 1.0 * (2*Math.PI*(6*Math.PI/180)*0.88);
+  const ratio = Math.max(0.2, Math.min(2.5, Math.abs(L)/Math.max(1,L0)));
+  const base = 60, len = base*ratio;
+  $("liftLine").setAttribute("x2", 0); $("liftLine").setAttribute("y2", -len);
+  $("liftHead").setAttribute("points", `-9,${-len} 9,${-len} 0,${-len-14}`);
   const tint = $("foilTint");
-  tint.style.opacity = 0.55 + Math.min(0.35, Math.abs(CL)/2.5);
+  const intensity = Math.max(0.25, Math.min(0.95, (q*Math.abs(CL))/3000 ));
+  tint.style.opacity = intensity;
 }
 
 function update(){
-  ["aoa","V","rho","S","eta"].forEach(k=>{
-    $("o"+k).value = (k==="aoa"||k==="V") ? state[k].toFixed(1) : state[k].toFixed(3).replace(/\.?0+$/,"");
-  });
-  const {alpha, CL, q, L, stalled} = compute();
-  $("readout").innerHTML = `q = ${q.toFixed(0)} Pa  |  C<sub>L</sub> = ${CL.toFixed(2)}  |  L = ${L.toFixed(0)} N`;
-  const st = $("status");
-  if(stalled){ st.textContent = "失速 Stalled"; st.classList.remove("good"); st.classList.add("bad"); }
-  else { st.textContent = "附着 Attached"; st.classList.add("good"); st.classList.remove("bad"); }
-  const arrow = $("liftArrow");
-  const deg = -90 + state.aoa*0.2;
-  arrow.setAttribute("transform", `translate(220,-10) rotate(${deg})`);
-  tintPressure(CL);
+  ["aoa","V","rho","S","eta"].forEach(k=> $("o"+k).value = (k==="aoa"||k==="V") ? state[k].toFixed(1) : String(state[k]));
+  const {CL, q, L, stalled} = compute();
+  $("readout").innerHTML = `q=${q.toFixed(0)} Pa | C<sub>L</sub>=${CL.toFixed(2)} | L=${L.toFixed(0)} N`;
+  const st = stalled ? '<span class="status bad">失速 Stalled</span>' : '<span class="status good">附着 Attached</span>';
+  $("statusBar").innerHTML = st;
   setFoilShape();
+  scaleVisuals(CL, q, L);
 }
 
 function bind(){
   ["aoa","V","rho","S","eta"].forEach(id=>{
-    $(id).addEventListener("input", (e)=>{
-      state[id] = Number(e.target.value);
-      update();
-    });
+    $(id).addEventListener("input", e=>{ state[id]=Number(e.target.value); update(); });
   });
 }
 
-setFoilShape();
-initParticles();
-bind();
-update();
-requestAnimationFrame(animateParticles);
+setFoilShape(); initParticles(); bind(); update(); requestAnimationFrame(animateParticles);
 </script>
 </body>
 </html>
